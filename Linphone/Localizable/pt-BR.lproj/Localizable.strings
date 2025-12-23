@@ -1,3 +1,9 @@
+/* 
+  Localizable.strings
+  Linphone
+ 
+*/
+
 "assistant_account_create" = "Criar";
 "assistant_account_creation_wrong_phone_number" = "Número errado?";
 "assistant_account_login" = "Login";

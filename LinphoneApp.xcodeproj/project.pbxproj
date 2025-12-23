@@ -277,6 +277,7 @@
 		66F08C882C2AFEF700D9AE2F /* MeetingsListBottomSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingsListBottomSheet.swift; sourceTree = "<group>"; };
 		66F626B12BCEBB86003E2DEC /* AddParticipantsFragment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddParticipantsFragment.swift; sourceTree = "<group>"; };
 		66FDB7802C7C689A00561566 /* EventEditViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventEditViewController.swift; sourceTree = "<group>"; };
+		99060E062EFA2E1D0098B07A /* pt-BR */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "pt-BR"; path = "Localizable/pt-BR.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		C60E8F182C0F649200A06DB8 /* UIApplicationExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIApplicationExtension.swift; sourceTree = "<group>"; };
 		C62817272C1B389700DBA646 /* SideMenuAccountRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SideMenuAccountRow.swift; sourceTree = "<group>"; };
 		C628172D2C1C3A3600DBA646 /* AccountExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountExtension.swift; sourceTree = "<group>"; };
@@ -1232,6 +1233,7 @@
 				ru,
 				"zh-Hans",
 				sk,
+				"pt-BR",
 			);
 			mainGroup = D719ABAA2ABC67BF00B41C10;
 			packageReferences = (
@@ -1558,6 +1560,7 @@
 				D7F372C32E65C51B0008B863 /* ru */,
 				D7F372C42E65C51E0008B863 /* zh-Hans */,
 				D71C266F2E819A0D001A7F92 /* sk */,
+				99060E062EFA2E1D0098B07A /* pt-BR */,
 			);
 			name = Localizable.strings;
 			sourceTree = "<group>";

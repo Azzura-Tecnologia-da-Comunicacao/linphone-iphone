@@ -78,7 +78,7 @@ class CorePreferences {
 	
 	static var keepServiceAlive: Bool {
 		get {
-			return Config.get().getBool(section: "app", key: "keep_service_alive", defaultValue: false)
+			return Config.get().getBool(section: "app", key: "keep_service_alive", defaultValue: true)
 		}
 		set {
 			Config.get().setBool(section: "app", key: "keep_service_alive", value: newValue)
@@ -189,8 +189,8 @@ class CorePreferences {
 	
 	static var themeMainColor: String {
 		get {
-			let raw = Config.get().getString(section: "ui", key: "theme_main_color", defaultString: "orange")
-			return safeString(raw, defaultValue: "orange")
+			let raw = Config.get().getString(section: "ui", key: "theme_main_color", defaultString: "blue")
+			return safeString(raw, defaultValue: "blue")
 		}
 		set {
 			Config.get().setString(section: "ui", key: "theme_main_color", value: newValue)
@@ -263,8 +263,8 @@ class CorePreferences {
 	
 	static var defaultDomain: String {
 		get {
-			let raw = Config.get().getString(section: "app", key: "default_domain", defaultString: "sip.linphone.org")
-			return safeString(raw, defaultValue: "sip.linphone.org")
+			let raw = Config.get().getString(section: "app", key: "default_domain", defaultString: "azzura.azzura.net.br")
+			return safeString(raw, defaultValue: "azzura.azzura.net.br")
 		}
 		set {
 			Config.get().setString(section: "app", key: "default_domain", value: newValue)
@@ -273,7 +273,7 @@ class CorePreferences {
     
 	static var disableChatFeature: Bool {
 		get {
-			return Config.get().getBool(section: "ui", key: "disable_chat_feature", defaultValue: false)
+			return Config.get().getBool(section: "ui", key: "disable_chat_feature", defaultValue: true)
 		}
 		set {
 			Config.get().setBool(section: "ui", key: "disable_chat_feature", value: newValue)

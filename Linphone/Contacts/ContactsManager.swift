@@ -707,7 +707,12 @@ final class ContactsManager: ObservableObject {
 	func refreshCardDavContacts() {
 		self.coreContext.doOnCoreQueue { core in
 			core.friendsLists.forEach{ friendList in
+                
+                
+                print("\(#function) - Core is being stopped or already destroyed, abort")
+                
 				if (friendList.type == .CardDAV) {
+                    
 					Log.info("\(ContactsManager.TAG) Found CardDAV friend list \(friendList.displayName), starting update")
 					friendList.synchronizeFriendsFromServer()
 				}

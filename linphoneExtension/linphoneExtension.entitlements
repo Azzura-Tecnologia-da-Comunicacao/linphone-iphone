@@ -4,7 +4,8 @@
 <dict>
 	<key>com.apple.security.application-groups</key>
 	<array>
-		<string>group.org.linphone.phone.linphoneExtension</string>
+		<string>group.br.net.azzura.phone</string>
+		<string>group.br.net.azzura.phone.msgNotification</string>
 	</array>
 </dict>
 </plist>

@@ -11,7 +11,6 @@
 	<key>com.apple.security.application-groups</key>
 	<array>
 		<string>group.br.net.azzura.phone</string>
-		<string>group.br.net.azzura.phone.msgNotification</string>
 	</array>
 	<key>com.apple.security.files.user-selected.read-only</key>
 	<true/>

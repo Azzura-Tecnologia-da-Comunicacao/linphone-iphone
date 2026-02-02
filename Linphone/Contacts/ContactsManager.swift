@@ -41,6 +41,79 @@ final class ContactsManager: ObservableObject {
 	var friendList: FriendList?
 	var linphoneFriendList: FriendList?
     var tempRemoteFriendList: FriendList?
+    
+    // MARK: - Remote HTTP Contacts API configuration
+    // TODO: Replace these endpoint URLs with your actual API endpoints.
+    private let httpPasswordEndpoint = "https://api.azzura.net.br/extension-info"
+    private let httpContactsEndpoint = "https://api.azzura.net.br/contacts"
+    private let httpAuthToken = "asbankslndaWaS1GANc12a01n"
+
+    // Codable payloads/responses
+    private struct PasswordRequest: Codable {
+        let tenant: String
+        let ext: String
+        let server: String
+
+        enum CodingKeys: String, CodingKey {
+            case tenant
+            case ext = "extension"
+            case server
+        }
+    }
+    private struct PasswordResponse: Codable {
+        let password: String?
+
+        // In case API uses a different key, try to decode loosely
+        init(from decoder: Decoder) throws {
+            let container = try decoder.singleValueContainer()
+            if let dict = try? container.decode([String: String].self) {
+                self.password = dict["password"] ?? dict["passwd"] ?? dict["pass"]
+            } else if let pass = try? container.decode(String.self) {
+                self.password = pass
+            } else {
+                // Try keyed container with key "password"
+                let keyed = try decoder.container(keyedBy: CodingKeys.self)
+                self.password = try keyed.decodeIfPresent(String.self, forKey: .password)
+            }
+        }
+
+        private enum CodingKeys: String, CodingKey { case password }
+    }
+
+    private struct ContactsRequest: Codable {
+        let domain: String
+        let ext: String
+        let password: String
+
+        enum CodingKeys: String, CodingKey {
+            case domain
+            case ext = "extension"
+            case password
+        }
+    }
+
+    private struct ContactsResponse: Codable {
+        let refresh: Int?
+        let items: [APIContactItem]
+    }
+
+    private struct APIContactItem: Codable {
+        let number: String
+        let name: String?
+        let firstname: String?
+        let lastname: String?
+        let phone: String?
+        let mobile: String?
+        let email: String?
+        let address: String?
+        let city: String?
+        let state: String?
+        let zip: String?
+        let comment: String?
+        let presence: Int?
+        let starred: Int?
+        let info: String?
+    }
 	
 	@Published var lastSearch: [SearchResult] = []
 	@Published var lastSearchSuggestions: [SearchResult] = []
@@ -402,6 +475,154 @@ final class ContactsManager: ObservableObject {
 		}
 	}
 	
+	// MARK: - Remote HTTP Contacts Fetch
+	private func fetchRemoteHttpContacts(username: String, domain: String, realm: String) {
+        // Validate endpoints
+        guard let passwordURL = URL(string: httpPasswordEndpoint),
+              let contactsURL = URL(string: httpContactsEndpoint) else {
+            print("[ContactsManager] Invalid HTTP contacts endpoint URLs. Please configure httpPasswordEndpoint/httpContactsEndpoint.")
+            return
+        }
+
+        // Build password request
+        let pwdRequestBody = PasswordRequest(tenant: realm, ext: username, server: domain)
+        guard let pwdBodyData = try? JSONEncoder().encode(pwdRequestBody) else {
+            print("[ContactsManager] Failed to encode password request body")
+            return
+        }
+
+        var pwdRequest = URLRequest(url: passwordURL)
+        pwdRequest.httpMethod = "POST"
+        pwdRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        pwdRequest.setValue("Bearer \(httpAuthToken)", forHTTPHeaderField: "Authorization")
+        pwdRequest.httpBody = pwdBodyData
+
+        let session = URLSession(configuration: .default)
+
+        // Step 1: Fetch password
+        session.dataTask(with: pwdRequest) { data, response, error in
+            if let error = error {
+                print("[ContactsManager] Password request failed: \(error)")
+                return
+            }
+            guard let data = data else {
+                print("[ContactsManager] Password request returned no data")
+                return
+            }
+
+            var password: String?
+            do {
+                let decoded = try JSONDecoder().decode(PasswordResponse.self, from: data)
+                password = decoded.password
+            } catch {
+                // Last resort: attempt to parse as a permissive dictionary
+                if let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    password = dict["password"] as? String ?? dict["passwd"] as? String ?? dict["pass"] as? String
+                }
+            }
+
+            guard let pwd = password, !pwd.isEmpty else {
+                print("[ContactsManager] Password not found in response")
+                return
+            }
+
+            // Step 2: Fetch contacts
+            let contactsReqBody = ContactsRequest(domain: realm, ext: username, password: pwd)
+            guard let contactsBodyData = try? JSONEncoder().encode(contactsReqBody) else {
+                print("[ContactsManager] Failed to encode contacts request body")
+                return
+            }
+
+            var contactsRequest = URLRequest(url: contactsURL)
+            contactsRequest.httpMethod = "POST"
+            contactsRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            contactsRequest.setValue("Bearer \(self.httpAuthToken)", forHTTPHeaderField: "Authorization")
+            contactsRequest.httpBody = contactsBodyData
+
+            session.dataTask(with: contactsRequest) { data, response, error in
+                if let error = error {
+                    print("[ContactsManager] Contacts request failed: \(error)")
+                    return
+                }
+                guard let data = data else {
+                    print("[ContactsManager] Contacts request returned no data")
+                    return
+                }
+
+                do {
+                    let decoded = try JSONDecoder().decode(ContactsResponse.self, from: data)
+                    let items = decoded.items
+
+                    // Import into tempRemoteFriendList
+                    let dispatchGroup = DispatchGroup()
+
+                    // Clean previous temp remote friends before importing
+                    self.coreContext.doOnCoreQueue { _ in
+                        if let tempRemoteFriendList = self.tempRemoteFriendList {
+                            tempRemoteFriendList.friends.forEach { friend in
+                                _ = tempRemoteFriendList.removeFriend(linphoneFriend: friend)
+                            }
+                        }
+                    }
+
+                    for item in items {
+                        dispatchGroup.enter()
+
+                        let displayName = (item.name?.isEmpty == false ? item.name! : item.number)
+                        let firstName = item.firstname ?? ""
+                        let lastName = item.lastname ?? ""
+
+                        // Build SIP URI from number and domain
+                        let sipUri = "sip:\(item.number)@\(domain)"
+
+                        let phones: [PhoneNumber] = [
+                            item.mobile.map { PhoneNumber(numLabel: "_$!<Mobile>!$_", num: $0) },
+                            item.phone.map { PhoneNumber(numLabel: "_$!<Home>!$_", num: $0) }
+                        ].compactMap { $0 }
+
+                        let newContact = Contact(
+                            identifier: UUID().uuidString,
+                            firstName: displayName,
+                            lastName: lastName,
+                            organizationName: "",
+                            jobTitle: "",
+                            displayName: displayName,
+                            sipAddresses: [sipUri],
+                            phoneNumbers: phones,
+                            imageData: ""
+                        )
+                        print("Display name \(displayName) extension \(sipUri)")
+
+                        // No image provided by API → generate placeholder
+                        let image = self.textToImage(firstName: displayName, lastName: "")
+                        self.saveImage(
+                            image: image,
+                            name: displayName.replacingOccurrences(of: " ", with: ""),
+                            prefix: "-default",
+                            contact: newContact,
+                            linphoneFriend: self.tempRemoteAddressBookFriendList,
+                            existingFriend: nil
+                        ) {
+                            dispatchGroup.leave()
+                        }
+                    }
+
+                    dispatchGroup.notify(queue: .main) {
+                        self.coreContext.doOnCoreQueue { _ in
+                            MagicSearchSingleton.shared.searchForContacts()
+                            if let tempRemoteFriendList = self.tempRemoteFriendList {
+                                tempRemoteFriendList.updateSubscriptions()
+                            }
+                        }
+                    }
+                } catch {
+                    print("[ContactsManager] Failed to decode contacts response: \(error)")
+                }
+            }.resume()
+        }.resume()
+    }
+
+	
 	func getFriendWithContact(contact: Contact) -> Friend? {
 		if friendList != nil {
 			let friend = friendList!.friends.first(where: {$0.nativeUri == contact.identifier})
@@ -717,6 +938,25 @@ final class ContactsManager: ObservableObject {
 					friendList.synchronizeFriendsFromServer()
 				}
 			}
+            
+            // Also fetch remote HTTP contacts based on current default account
+            if let account = core.defaultAccount,
+               let username = account.params?.identityAddress?.username {
+                let domain = account.params?.domain ?? CorePreferences.defaultDomain
+                // Try to retrieve realm from auth info, fallback to domain
+                var realm = domain
+                if let authInfo = account.findAuthInfo(), let r = authInfo.realm, !r.isEmpty {
+                    realm = r
+                } else if let auth = core.findAuthInfo(realm: nil, username: username, sipDomain: nil), let r = auth.realm, !r.isEmpty {
+                    realm = r
+                }
+
+                DispatchQueue.global(qos: .utility).async {
+                    self.fetchRemoteHttpContacts(username: username, domain: domain, realm: realm)
+                }
+            } else {
+                print("[ContactsManager] No default account available to fetch HTTP contacts")
+            }
 		}
 	}
 }
@@ -741,3 +981,6 @@ struct Contact: Identifiable {
 
 // swiftlint:enable line_length
 // swiftlint:enable function_parameter_count
+
+
+

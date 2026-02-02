@@ -2,7 +2,7 @@
 ## Start of default rc
 
 [sip]
-contact="Linphone iPhone" <sip:linphone.iphone@unknown-host>
+contact="Azzura Phone iPhone" <sip:azzuraphone@azzura.net.br>
 use_info=0
 use_ipv6=1
 keepalive_period=30000
@@ -36,9 +36,9 @@ host=
 port=443
 
 [misc]
-log_collection_upload_server_url=https://files.linphone.org/http-file-transfer-server/hft.php
-file_transfer_server_url=https://files.linphone.org/http-file-transfer-server/hft.php
-version_check_url_root=https://download.linphone.org/releases
+log_collection_upload_server_url=
+file_transfer_server_url=
+version_check_url_root=https://azzura.net.br/azzura-phone/releases
 max_calls=10
 history_max_size=100
 conference_layout=1

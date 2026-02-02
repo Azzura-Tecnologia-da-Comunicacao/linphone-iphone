@@ -160,7 +160,7 @@ class CoreContext: ObservableObject {
 			
 			Log.info("Git Info — App: \(appGitTag + "-" + appGitVersion) [\(appGitBranch)] | SDK: \(sdkGitVersion) [\(sdkGitBranch)]")
 			
-			let userAgent = "LinphoneiOS/\(appGitTag) (\(UIDevice.current.localizedModel.replacingOccurrences(of: "'", with: ""))) LinphoneSDK"
+			let userAgent = "AzzuraPhoneIphone/\(appGitTag) (\(UIDevice.current.localizedModel.replacingOccurrences(of: "'", with: ""))) LinphoneSDK"
 			self.mCore.setUserAgent(name: userAgent, version: self.coreVersion)
 			
 			self.mCore.videoCaptureEnabled = true
@@ -171,9 +171,9 @@ class CoreContext: ObservableObject {
 			// Migration
 			self.mCore.config!.setBool(section: "sip", key: "auto_answer_replacing_calls", value: false)
 			self.mCore.config!.setBool(section: "sip", key: "deliver_imdn", value: false)
-			self.mCore.config!.setString(section: "misc", key: "log_collection_upload_server_url", value: "https://files.linphone.org:443/http-file-transfer-server/hft.php")
-			self.mCore.config!.setString(section: "misc", key: "file_transfer_server_url", value: "https://files.linphone.org:443/http-file-transfer-server/hft.php")
-			self.mCore.config!.setString(section: "misc", key: "version_check_url_root", value: "https://download.linphone.org/releases")
+			self.mCore.config!.setString(section: "misc", key: "log_collection_upload_server_url", value: "")
+			self.mCore.config!.setString(section: "misc", key: "file_transfer_server_url", value: "")
+			self.mCore.config!.setString(section: "misc", key: "version_check_url_root", value: "https://azzura.net.br/azzura-phone/releases")
 			
 			self.mCore.imdnToEverybodyThreshold = 1
 			self.imdnToEverybodyThreshold = self.mCore.imdnToEverybodyThreshold == 1

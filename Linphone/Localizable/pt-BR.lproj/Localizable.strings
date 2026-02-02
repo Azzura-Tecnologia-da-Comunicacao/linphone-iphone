@@ -123,7 +123,7 @@
 "assistant_dialog_general_terms_and_privacy_policy_title" = "Termos gerais e política de privacidade";
 "assistant_dialog_general_terms_label" = "termos gerais";
 "assistant_dialog_privacy_policy_label" = "política de privacidade";
-"assistant_login_third_party_sip_account" = "Usar uma conta SIP de terceiros";
+"assistant_login_third_party_sip_account" = "Acessar com a conta Azzura";
 "assistant_no_account_yet" = "Ainda não tem uma conta?";
 "assistant_permissions_grant_all_of_them" = "OK";
 "assistant_permissions_skip_permissions" = "Fazer isso mais tarde";
@@ -131,7 +131,7 @@
 "assistant_qr_code_invalid_toast" = "QR code inválido!";
 "assistant_scan_qr_code" = "Escanear QR code";
 "assistant_sip_account_transport_protocol" = "Transporte";
-"assistant_third_party_sip_account_warning_ok" = "Eu entendo";
+"assistant_third_party_sip_account_warning_ok" = "Entrar com minha conta Azzura";
 "authentication_id" = "ID de autenticação (se diferente)";
 "bottom_navigation_calls_label" = "Chamadas";
 "bottom_navigation_contacts_label" = "Contatos";
@@ -369,7 +369,7 @@
 "start" = "Início";
 "uri_handler_config_success_toast" = "Configuração aplicada com sucesso";
 "username" = "Nome de usuário";
-"welcome_page_3_title" = "Código aberto";
+"welcome_page_3_title" = "Comunicação de qualidade";
 "[linphone.org/contact](https://linphone.org/contact)" = "[azzura.net.br/contato](https://azzura.net.br/contato)";
 "*" = "*";
 "**%@**" = "**%@**";
@@ -525,7 +525,7 @@
 "[https://sip.linphone.org](https://sip.linphone.org)" = "[https://azzura.azzura.net.br](https://azzura.azzura.net.br)";
 ": %@" = ": %@";
 "welcome_carousel_skip" = "Pular";
-"welcome_page_1_message" = "Um aplicativo de comunicação **seguro**, de **código aberto** e **francês**.";
+"welcome_page_1_message" = "Um aplicativo de comunicação **seguro**, de **código aberto**.";
 "welcome_page_2_message" = "Suas comunicações estão seguras graças à nossa **criptografia de ponta a ponta**.";
-"welcome_page_3_message" = "Um aplicativo **gratuito** e de código aberto desde **2001**.";
+"welcome_page_3_message" = "Um aplicativo para fazer suas ligações corporativas.";
 "You will change this mode later" = "Você mudará este modo mais tarde";

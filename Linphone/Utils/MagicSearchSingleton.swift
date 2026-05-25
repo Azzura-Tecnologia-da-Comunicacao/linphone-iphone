@@ -116,7 +116,8 @@ final class MagicSearchSingleton: ObservableObject {
 				}
 				
 				var addedAvatarListModel: [ContactAvatarModel] = []
-				sortedLastSearch.forEach { searchResult in
+				for searchResult in sortedLastSearch {
+					if addedAvatarListModel.count >= 100 { break }
 					if searchResult.friend != nil {
                         if (searchResult.friend?.friendList?.displayName == self.nativeAddressBookFriendList || searchResult.friend?.friendList?.displayName == self.linphoneAddressBookFriendList || searchResult.friend?.friendList?.displayName == self.tempRemoteAddressBookFriendList) {
                             addedAvatarListModel.append(

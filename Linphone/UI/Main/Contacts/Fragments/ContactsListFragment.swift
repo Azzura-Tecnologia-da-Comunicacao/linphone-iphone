@@ -31,8 +31,10 @@ struct ContactsListFragment: View {
     var startCallFunc: (_ addr: Address) -> Void
 	
 	var body: some View {
-		ForEach(Array(contactsManager.avatarListModel.enumerated()), id: \.element.id) { index, contactAvatarModel in
-			ContactRow(contactAvatarModel: contactAvatarModel, index: index, showingSheet: $showingSheet, startCallFunc: startCallFunc)
+		LazyVStack(spacing: 0) {
+			ForEach(Array(contactsManager.avatarListModel.enumerated()), id: \.element.id) { index, contactAvatarModel in
+				ContactRow(contactAvatarModel: contactAvatarModel, index: index, showingSheet: $showingSheet, startCallFunc: startCallFunc)
+			}
 		}
 	}
 }
@@ -89,8 +91,9 @@ struct ContactRow: View {
 			}
 		}
 		.frame(height: 50)
+		.padding(.vertical, 6)
+		.padding(.horizontal, 20)
 		.buttonStyle(.borderless)
-		.listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
 		.listRowSeparator(.hidden)
 		.background(.white)
 		.onTapGesture {

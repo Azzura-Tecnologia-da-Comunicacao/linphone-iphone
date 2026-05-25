@@ -236,18 +236,28 @@ struct StartCallFragment: View {
 					}
 					
 					ZStack {
+						if startCallViewModel.searchField.isEmpty {
+							VStack {
+								Spacer()
+								Text("history_call_start_search_empty_hint")
+									.default_text_style(styleSize: 15)
+									.foregroundColor(Color.grayMain2c500)
+								Spacer()
+							}
+							.frame(maxWidth: .infinity)
+						} else {
 						ScrollView {
 							if !ContactsManager.shared.lastSearch.isEmpty {
 								HStack(alignment: .center) {
 									Text("contacts_list_all_contacts_title")
 										.default_text_style_800(styleSize: 16)
-									
+
 									Spacer()
 								}
 								.padding(.vertical, 10)
 								.padding(.horizontal, 16)
 							}
-							
+
 							ContactsListFragment(showingSheet: .constant(false)
 												 , startCallFunc: { addr in
 								if callViewModel.isTransferInsteadCall {
@@ -313,6 +323,7 @@ struct StartCallFragment: View {
 								.controlSize(.large)
 								.progressViewStyle(CircularProgressViewStyle(tint: .orangeMain500))
 						}
+						} // end else (searchField not empty)
 					}
 				}
 				.frame(maxWidth: .infinity)
@@ -322,10 +333,7 @@ struct StartCallFragment: View {
 		.navigationTitle("")
 		.navigationBarHidden(true)
 		.onAppear {
-			if !magicSearch.currentFilter.isEmpty || (self.contactsManager.lastSearch.isEmpty && self.contactsManager.lastSearchSuggestions.isEmpty) {
-				magicSearch.currentFilter = ""
-				magicSearch.searchForContacts()
-			}
+			magicSearch.currentFilter = ""
 		}
 	}
 	

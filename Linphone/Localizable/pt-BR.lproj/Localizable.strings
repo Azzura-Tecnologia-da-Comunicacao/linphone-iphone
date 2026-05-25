@@ -39,6 +39,7 @@
 "help_version_up_to_date_toast_message" = "Sua versão está atualizada";
 "history_call_start_create_group_call" = "Criar uma chamada em grupo";
 "history_call_start_search_bar_filter_hint" = "Pesquisar contato ou histórico de chamadas";
+"history_call_start_search_empty_hint" = "Digite um nome ou número para buscar contatos";
 "history_call_start_title" = "Nova chamada";
 "history_dialog_delete_all_call_logs_message" = "Todas as chamadas serão removidas do histórico";
 "history_dialog_delete_all_call_logs_title" = "Você realmente quer excluir todo o histórico de chamadas?";
@@ -492,6 +493,7 @@
 "settings_contacts_carddav_realm_title" = "Domínio de autenticação";
 "settings_contacts_ldap_bind_user_password_title" = "Senha do usuário de autenticação";
 "settings_contacts_ldap_max_results_title" = "Máximo de resultados";
+"settings_contacts_force_resync_title" = "Forçar ressincronização de contatos";
 "settings_contacts_ldap_request_timeout_title" = "Tempo limite da solicitação";
 "sip_address" = "Endereço SIP";
 "sip.linphone.org" = "azzura.azzura.net.br";

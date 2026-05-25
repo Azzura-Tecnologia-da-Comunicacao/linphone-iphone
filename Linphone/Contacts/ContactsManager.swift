@@ -45,7 +45,7 @@ final class ContactsManager: ObservableObject {
     // MARK: - Remote HTTP Contacts API configuration
     // TODO: Replace these endpoint URLs with your actual API endpoints.
     private let httpPasswordEndpoint = "https://api.azzura.net.br/extension-info"
-    private let httpContactsEndpoint = "https://api.azzura.net.br/contacts"
+    private let httpContactsEndpoint = "https://api.azzura.net.br/v2/contacts"
     private let httpAuthToken = "asbankslndaWaS1GANc12a01n"
 
     // Codable payloads/responses
@@ -84,16 +84,40 @@ final class ContactsManager: ObservableObject {
         let domain: String
         let ext: String
         let password: String
+        let page: Int
+        let pageSize: Int
 
         enum CodingKeys: String, CodingKey {
             case domain
             case ext = "extension"
             case password
+            case page
+            case pageSize = "page_size"
+        }
+    }
+
+    private struct PaginationInfo: Codable {
+        let page: Int
+        let pageSize: Int
+        let totalItems: Int
+        let totalPages: Int
+        let hasNext: Bool
+        let hasPrev: Bool
+
+        enum CodingKeys: String, CodingKey {
+            case page
+            case pageSize = "page_size"
+            case totalItems = "total_items"
+            case totalPages = "total_pages"
+            case hasNext = "has_next"
+            case hasPrev = "has_prev"
         }
     }
 
     private struct ContactsResponse: Codable {
+        let hash: String?
         let refresh: Int?
+        let pagination: PaginationInfo?
         let items: [APIContactItem]
     }
 
@@ -129,7 +153,7 @@ final class ContactsManager: ObservableObject {
 	private var coreDelegate: CoreDelegate?
 	private var friendListDelegate: FriendListDelegate?
 	private var magicSearchDelegate: MagicSearchDelegate?
-	
+
 	private init() {}
 	
 	func fetchContacts() {
@@ -477,14 +501,11 @@ final class ContactsManager: ObservableObject {
 	
 	// MARK: - Remote HTTP Contacts Fetch
 	private func fetchRemoteHttpContacts(username: String, domain: String, realm: String) {
-        // Validate endpoints
-        guard let passwordURL = URL(string: httpPasswordEndpoint),
-              let contactsURL = URL(string: httpContactsEndpoint) else {
-            print("[ContactsManager] Invalid HTTP contacts endpoint URLs. Please configure httpPasswordEndpoint/httpContactsEndpoint.")
+        guard let passwordURL = URL(string: httpPasswordEndpoint) else {
+            print("[ContactsManager] Invalid HTTP contacts endpoint URLs.")
             return
         }
 
-        // Build password request
         let pwdRequestBody = PasswordRequest(tenant: realm, ext: username, server: domain)
         guard let pwdBodyData = try? JSONEncoder().encode(pwdRequestBody) else {
             print("[ContactsManager] Failed to encode password request body")
@@ -499,7 +520,6 @@ final class ContactsManager: ObservableObject {
 
         let session = URLSession(configuration: .default)
 
-        // Step 1: Fetch password
         session.dataTask(with: pwdRequest) { data, response, error in
             if let error = error {
                 print("[ContactsManager] Password request failed: \(error)")
@@ -515,7 +535,6 @@ final class ContactsManager: ObservableObject {
                 let decoded = try JSONDecoder().decode(PasswordResponse.self, from: data)
                 password = decoded.password
             } catch {
-                // Last resort: attempt to parse as a permissive dictionary
                 if let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                     password = dict["password"] as? String ?? dict["passwd"] as? String ?? dict["pass"] as? String
                 }
@@ -526,100 +545,162 @@ final class ContactsManager: ObservableObject {
                 return
             }
 
-            // Step 2: Fetch contacts
-            let contactsReqBody = ContactsRequest(domain: realm, ext: username, password: pwd)
-            guard let contactsBodyData = try? JSONEncoder().encode(contactsReqBody) else {
-                print("[ContactsManager] Failed to encode contacts request body")
+            // Friends are only cleared inside fetchContactsPage if the hash changed
+            self.fetchContactsPage(page: 1, username: username, domain: domain, realm: realm, password: pwd, session: session)
+        }.resume()
+    }
+
+    private func fetchContactsPage(page: Int, username: String, domain: String, realm: String, password: String, session: URLSession, pendingHashUpdate: String? = nil) {
+        guard let contactsURL = URL(string: httpContactsEndpoint) else { return }
+
+        let contactsReqBody = ContactsRequest(domain: realm, ext: username, password: password, page: page, pageSize: 200)
+        guard let contactsBodyData = try? JSONEncoder().encode(contactsReqBody) else {
+            print("[ContactsManager] Failed to encode contacts request body for page \(page)")
+            return
+        }
+
+        var contactsRequest = URLRequest(url: contactsURL)
+        contactsRequest.httpMethod = "POST"
+        contactsRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        contactsRequest.setValue("Bearer \(httpAuthToken)", forHTTPHeaderField: "Authorization")
+        contactsRequest.httpBody = contactsBodyData
+
+        session.dataTask(with: contactsRequest) { data, response, error in
+            if let error = error {
+                print("[ContactsManager] Contacts request failed on page \(page): \(error)")
+                return
+            }
+            guard let data = data else {
+                print("[ContactsManager] Contacts request returned no data on page \(page)")
                 return
             }
 
-            var contactsRequest = URLRequest(url: contactsURL)
-            contactsRequest.httpMethod = "POST"
-            contactsRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            contactsRequest.setValue("Bearer \(self.httpAuthToken)", forHTTPHeaderField: "Authorization")
-            contactsRequest.httpBody = contactsBodyData
+            do {
+                let decoded = try JSONDecoder().decode(ContactsResponse.self, from: data)
+                let items = decoded.items
+                let pagination = decoded.pagination
+                let hasNext = pagination?.hasNext ?? false
 
-            session.dataTask(with: contactsRequest) { data, response, error in
-                if let error = error {
-                    print("[ContactsManager] Contacts request failed: \(error)")
-                    return
-                }
-                guard let data = data else {
-                    print("[ContactsManager] Contacts request returned no data")
-                    return
-                }
-
-                do {
-                    let decoded = try JSONDecoder().decode(ContactsResponse.self, from: data)
-                    let items = decoded.items
-
-                    // Import into tempRemoteFriendList
-                    let dispatchGroup = DispatchGroup()
-
-                    // Clean previous temp remote friends before importing
+                var hashToSave: String? = pendingHashUpdate
+                if page == 1 {
+                    let hashKey = "contacts_hash_\(username)@\(realm)"
+                    if let newHash = decoded.hash {
+                        let storedHash = UserDefaults.standard.string(forKey: hashKey)
+                        if newHash == storedHash {
+                            print("[ContactsManager] Contacts hash unchanged, skipping sync")
+                            return
+                        }
+                        hashToSave = newHash
+                        print("[ContactsManager] Contacts hash changed, syncing")
+                    }
                     self.coreContext.doOnCoreQueue { _ in
-                        if let tempRemoteFriendList = self.tempRemoteFriendList {
-                            tempRemoteFriendList.friends.forEach { friend in
-                                _ = tempRemoteFriendList.removeFriend(linphoneFriend: friend)
-                            }
+                        self.tempRemoteFriendList?.friends.forEach {
+                            _ = self.tempRemoteFriendList?.removeFriend(linphoneFriend: $0)
                         }
                     }
-
-                    for item in items {
-                        dispatchGroup.enter()
-
-                        let displayName = (item.name?.isEmpty == false ? item.name! : item.number)
-                        let firstName = item.firstname ?? ""
-                        let lastName = item.lastname ?? ""
-
-                        // Build SIP URI from number and domain
-                        let sipUri = "sip:\(item.number)@\(domain)"
-
-                        let phones: [PhoneNumber] = [
-                            item.mobile.map { PhoneNumber(numLabel: "_$!<Mobile>!$_", num: $0) },
-                            item.phone.map { PhoneNumber(numLabel: "_$!<Home>!$_", num: $0) }
-                        ].compactMap { $0 }
-
-                        let newContact = Contact(
-                            identifier: UUID().uuidString,
-                            firstName: displayName,
-                            lastName: lastName,
-                            organizationName: "",
-                            jobTitle: "",
-                            displayName: displayName,
-                            sipAddresses: [sipUri],
-                            phoneNumbers: phones,
-                            imageData: ""
-                        )
-                        print("Display name \(displayName) extension \(sipUri)")
-
-                        // No image provided by API → generate placeholder
-                        let image = self.textToImage(firstName: displayName, lastName: "")
-                        self.saveImage(
-                            image: image,
-                            name: displayName.replacingOccurrences(of: " ", with: ""),
-                            prefix: "-default",
-                            contact: newContact,
-                            linphoneFriend: self.tempRemoteAddressBookFriendList,
-                            existingFriend: nil
-                        ) {
-                            dispatchGroup.leave()
-                        }
-                    }
-
-                    dispatchGroup.notify(queue: .main) {
-                        self.coreContext.doOnCoreQueue { _ in
-                            MagicSearchSingleton.shared.searchForContacts()
-                            if let tempRemoteFriendList = self.tempRemoteFriendList {
-                                tempRemoteFriendList.updateSubscriptions()
-                            }
-                        }
-                    }
-                } catch {
-                    print("[ContactsManager] Failed to decode contacts response: \(error)")
                 }
-            }.resume()
+
+                if let p = pagination {
+                    print("[ContactsManager] Page \(p.page)/\(p.totalPages) — \(items.count) items (total: \(p.totalItems))")
+                } else {
+                    print("[ContactsManager] No pagination info — \(items.count) items (legacy format)")
+                }
+
+                // Build contact data on this background thread.
+                // Avatars are reused from disk when available to avoid redundant CPU/IO work.
+                struct RemoteFriendData {
+                    let name: String
+                    let sipUri: String
+                    let mobilePhone: String?
+                    let imagePath: String
+                }
+
+                let friendDataList: [RemoteFriendData] = items.compactMap { item in
+                    let ext = item.phone ?? ""
+                    guard !ext.isEmpty else { return nil }
+                    let name = item.name?.isEmpty == false ? item.name! : ext
+                    let fileName = name.replacingOccurrences(of: " ", with: "") + "-default.png"
+                    let imagePath = self.getOrCreateAvatar(name: name, fileName: fileName)
+                    return RemoteFriendData(name: name, sipUri: "sip:\(ext)@\(domain)", mobilePhone: item.mobile, imagePath: imagePath)
+                }
+
+                // Dispatch friends in small sub-batches so the linphone core queue can
+                // interleave other operations (e.g. a contact search triggered by the UI)
+                // between batches instead of blocking for the entire page at once.
+                let subBatchSize = 30
+                let subBatches = stride(from: 0, to: max(friendDataList.count, 1), by: subBatchSize).map {
+                    Array(friendDataList[$0..<min($0 + subBatchSize, friendDataList.count)])
+                }
+
+                for (index, subBatch) in subBatches.enumerated() {
+                    let isLastSubBatch = index == subBatches.count - 1
+                    self.coreContext.doOnCoreQueue { core in
+                        for data in subBatch {
+                            do {
+                                let friend = try core.createFriend()
+                                friend.edit()
+                                try friend.setName(newValue: data.name)
+                                friend.vcard?.givenName = data.name
+                                if let address = core.interpretUrl(url: data.sipUri, applyInternationalPrefix: LinphoneUtils.applyInternationalPrefix(core: core)) {
+                                    friend.addAddress(address: address)
+                                }
+                                if let mobile = data.mobilePhone,
+                                   let phoneNumber = try? Factory.Instance.createFriendPhoneNumber(phoneNumber: mobile, label: "Mobile") {
+                                    friend.addPhoneNumberWithLabel(phoneNumber: phoneNumber)
+                                }
+                                friend.photo = data.imagePath
+                                try friend.setSubscribesenabled(newValue: false)
+                                try friend.setIncsubscribepolicy(newValue: .SPDeny)
+                                friend.done()
+                                if let list = self.tempRemoteFriendList {
+                                    _ = list.addFriend(linphoneFriend: friend)
+                                }
+                            } catch {
+                                print("[ContactsManager] Failed to create friend for \(data.name): \(error)")
+                            }
+                        }
+
+                        guard isLastSubBatch else { return }
+
+                        // searchForContacts and pagination are handled only by the last
+                        // sub-batch of each page to avoid redundant UI rebuilds.
+                        if !hasNext {
+                            MagicSearchSingleton.shared.searchForContacts()
+                            self.tempRemoteFriendList?.updateSubscriptions()
+                        }
+
+                        DispatchQueue.main.async {
+                            if hasNext {
+                                self.fetchContactsPage(page: page + 1, username: username, domain: domain, realm: realm, password: password, session: session, pendingHashUpdate: hashToSave)
+                            } else {
+                                let total = pagination?.totalItems ?? items.count
+                                print("[ContactsManager] All \(total) contacts loaded")
+                                if let hash = hashToSave {
+                                    UserDefaults.standard.set(hash, forKey: "contacts_hash_\(username)@\(realm)")
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch {
+                print("[ContactsManager] Failed to decode contacts response on page \(page): \(error)")
+                if let rawResponse = String(data: data, encoding: .utf8) {
+                    print("[ContactsManager] Response that failed: \(rawResponse)")
+                }
+            }
         }.resume()
+    }
+
+    private func getOrCreateAvatar(name: String, fileName: String) -> String {
+        guard let directory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return "" }
+        let url = directory.appendingPathComponent(fileName)
+        if FileManager.default.fileExists(atPath: url.path) {
+            return "file:/" + fileName
+        }
+        let image = textToImage(firstName: name, lastName: "")
+        guard let data = image.pngData() else { return "" }
+        try? data.write(to: url)
+        return "file:/" + fileName
     }
 
 	
@@ -917,6 +998,14 @@ final class ContactsManager: ObservableObject {
 		}
 	}
 	
+	func clearContactsCacheAndResync() {
+		let defaults = UserDefaults.standard
+		defaults.dictionaryRepresentation().keys
+			.filter { $0.hasPrefix("contacts_hash_") }
+			.forEach { defaults.removeObject(forKey: $0) }
+		refreshCardDavContacts()
+	}
+
 	func updateSubscriptionsLinphoneList() {
 		self.coreContext.doOnCoreQueue { _ in
 			if let linphoneFL = self.linphoneFriendList {

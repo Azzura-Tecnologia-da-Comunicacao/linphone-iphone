@@ -349,9 +349,9 @@ struct SettingsFragment: View {
 														Text(cardDavName)
 															.default_text_style_700(styleSize: 15)
 															.frame(maxWidth: .infinity, alignment: .leading)
-														
+
 														Spacer()
-														
+
 														Image("pencil-simple")
 															.renderingMode(.template)
 															.resizable()
@@ -363,6 +363,22 @@ struct SettingsFragment: View {
 													.frame(maxWidth: .infinity)
 												})
 											}
+										}
+
+										HStack {
+											Spacer()
+											Button(
+												action: {
+													ContactsManager.shared.clearContactsCacheAndResync()
+												}, label: {
+													Text("settings_contacts_force_resync_title")
+														.default_text_style_white_600(styleSize: 15)
+												}
+											)
+											.padding(.horizontal, 20)
+											.padding(.vertical, 10)
+											.background(Color.orangeMain500)
+											.cornerRadius(60)
 										}
 									}
 									.padding(.vertical, 30)

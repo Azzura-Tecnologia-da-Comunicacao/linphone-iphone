@@ -323,6 +323,7 @@
 "help_version_up_to_date_toast_message" = "Your version is up-to-date";
 "history_call_start_create_group_call" = "Create a group call";
 "history_call_start_search_bar_filter_hint" = "Search contact or history call";
+"history_call_start_search_empty_hint" = "Type a name or number to search contacts";
 "history_call_start_title" = "New call";
 "history_dialog_delete_all_call_logs_message" = "All calls will be removed from the history";
 "history_dialog_delete_all_call_logs_title" = "Do you really want to delete all calls history?";
@@ -500,6 +501,7 @@
 "settings_contacts_ldap_sip_domain_title" = "SIP domain";
 "settings_contacts_ldap_error_toast" = "A error occurred, LDAP server not saved!";
 "settings_contacts_ldap_empty_server_error_toast" = "Server URL can't be empty";
+"settings_contacts_force_resync_title" = "Force contacts resync";
 "settings_contacts_title" = "Contacts";
 "settings_conversations_auto_download_title" = "Auto-download files";
 "settings_conversations_mark_as_read_when_dismissing_notif_title" = "Mark conversation as read when dismissing message notification";
